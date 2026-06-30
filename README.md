@@ -1,6 +1,6 @@
 # Code Review Council ⚖️
 
-🔗 **Live demo: [your-app-name.streamlit.app](https://your-app-name.streamlit.app)** — replace this with your actual Streamlit Cloud URL
+🔗 **Live demo: [your-app-name.streamlit.app](https://code-review-council-ccgciqkfvkavydnyrr5uzb.streamlit.app/)** — replace this with your actual Streamlit Cloud URL
 
 Three specialist agents independently review your code, debate trade-offs, and a chat manager hands down a final consensus — a working implementation of the **group chat orchestration** pattern (also called multiagent debate, maker-checker, or council orchestration).
 
