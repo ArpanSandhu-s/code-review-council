@@ -23,22 +23,41 @@ import os
 import requests
 
 # ---------------------------------------------------------------------------
-# Setup — provider is switchable via the LLM_PROVIDER env var
+# Setup — provider is switchable via the LLM_PROVIDER env var (local) or
+# Streamlit secrets (when deployed on Streamlit Community Cloud).
 # ---------------------------------------------------------------------------
 #   LLM_PROVIDER=gemini   -> uses Gemini 2.5 Flash (needs GEMINI_API_KEY, free tier)
 #   LLM_PROVIDER=ollama   -> uses local Ollama (needs `ollama serve` running)
 #
 # Default: ollama, since that's what you're running locally with no setup.
+# On Streamlit Cloud, set these in the app's Settings -> Secrets panel
+# instead of env vars — they get read the same way via st.secrets.
 
-PROVIDER = os.environ.get("LLM_PROVIDER", "ollama").lower()
 
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+def _get_config(key: str, default: str = "") -> str:
+    """Reads config from Streamlit secrets first (for cloud deployment),
+    falling back to environment variables (for local runs). Streamlit
+    secrets aren't available unless running inside `streamlit run`, so
+    this degrades gracefully when imported elsewhere (e.g. the Flask app
+    or the CLI test block at the bottom of this file)."""
+    try:
+        import streamlit as st
+        if key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return os.environ.get(key, default)
+
+
+PROVIDER = _get_config("LLM_PROVIDER", "ollama").lower()
+
+OLLAMA_MODEL = _get_config("OLLAMA_MODEL", "qwen2.5-coder:7b")
+OLLAMA_HOST = _get_config("OLLAMA_HOST", "http://localhost:11434")
 
 if PROVIDER == "gemini":
     from google import genai
     from google.genai import types
-    _gemini_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    _gemini_client = genai.Client(api_key=_get_config("GEMINI_API_KEY"))
     GEMINI_MODEL = "gemini-2.5-flash"
 
 
