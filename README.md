@@ -1,6 +1,6 @@
-# Code Review Council ⚖️
+# Code Review Council 
 
-<<<<<<< HEAD
+
 🔗 **Live demo: [code-review-council.main.streamlit.app](https://code-review-council-ccgciqkfvkavydnyrr5uzb.streamlit.app/)** — replace this with your actual Streamlit Cloud URL
 
 
