@@ -399,7 +399,13 @@ if run_btn:
             try:
                 st.session_state["result"] = run_council(code, lang_arg)
             except Exception as e:
-                st.error(f"The council could not convene: {e}")
+                err_str = str(e)
+                if "503" in err_str or "UNAVAILABLE" in err_str:
+                    st.error("Google's servers are briefly overloaded — this isn't your quota or your code. Wait a minute and try again.")
+                elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    st.error("Daily free-tier quota reached. It resets at midnight Pacific time — try again then, or check usage at ai.dev/rate-limit.")
+                else:
+                    st.error(f"The council could not convene: {e}")
                 st.session_state.pop("result", None)
 
 

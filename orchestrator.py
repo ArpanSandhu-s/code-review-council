@@ -62,13 +62,14 @@ if PROVIDER == "gemini":
 
 
 def _call_gemini(system_prompt: str, user_message: str, max_tokens: int) -> str:
-    """Calls Gemini with automatic retry on rate limit (429) errors —
-    the free tier allows only 5 requests/minute, so a burst of 4 calls
-    (3 agents + manager) can trip it even in normal use."""
+    """Calls Gemini with automatic retry on transient errors:
+    - 429 (rate limit, free tier allows only a handful of requests/minute)
+    - 503 (Google's servers temporarily overloaded — unrelated to your quota)
+    Both are worth waiting out and retrying rather than failing the whole
+    council on a blip."""
     import time
-    from google.genai import errors as genai_errors
 
-    max_retries = 3
+    max_retries = 4
     for attempt in range(max_retries):
         try:
             response = _gemini_client.models.generate_content(
@@ -81,9 +82,12 @@ def _call_gemini(system_prompt: str, user_message: str, max_tokens: int) -> str:
             )
             return response.text or ""
         except Exception as e:
-            is_rate_limit = "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
-            if is_rate_limit and attempt < max_retries - 1:
-                wait = 20 * (attempt + 1)  # 20s, 40s, 60s
+            err_str = str(e)
+            is_rate_limit = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str
+            is_overloaded = "503" in err_str or "UNAVAILABLE" in err_str
+            if (is_rate_limit or is_overloaded) and attempt < max_retries - 1:
+                # Rate limits need a longer wait than a server blip does.
+                wait = (20 * (attempt + 1)) if is_rate_limit else (5 * (attempt + 1))
                 time.sleep(wait)
                 continue
             raise
