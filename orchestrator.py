@@ -62,15 +62,31 @@ if PROVIDER == "gemini":
 
 
 def _call_gemini(system_prompt: str, user_message: str, max_tokens: int) -> str:
-    response = _gemini_client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            max_output_tokens=max_tokens,
-        ),
-    )
-    return response.text or ""
+    """Calls Gemini with automatic retry on rate limit (429) errors —
+    the free tier allows only 5 requests/minute, so a burst of 4 calls
+    (3 agents + manager) can trip it even in normal use."""
+    import time
+    from google.genai import errors as genai_errors
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = _gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=max_tokens,
+                ),
+            )
+            return response.text or ""
+        except Exception as e:
+            is_rate_limit = "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+            if is_rate_limit and attempt < max_retries - 1:
+                wait = 20 * (attempt + 1)  # 20s, 40s, 60s
+                time.sleep(wait)
+                continue
+            raise
 
 
 def _call_ollama(system_prompt: str, user_message: str, max_tokens: int) -> str:
@@ -217,7 +233,12 @@ def run_council(code: str, language: str = "") -> dict:
     thread = []
 
     agent_reports = {}
-    for agent in AGENTS:
+    for i, agent in enumerate(AGENTS):
+        # Gemini's free tier allows only 5 requests/minute — space calls
+        # out a little so a normal review doesn't trip the limit.
+        if PROVIDER == "gemini" and i > 0:
+            import time
+            time.sleep(13)
         output = call_claude(agent["system_prompt"], user_message)
         agent_reports[agent["id"]] = output
         thread.append({"speaker": agent["name"], "role": agent["id"], "content": output})

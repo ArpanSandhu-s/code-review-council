@@ -124,12 +124,34 @@ div[data-testid="stTextArea"] textarea:focus {
     box-shadow: 0 0 0 1px var(--accent) !important;
 }
 
+div[data-testid="stSelectbox"] label {
+    color: var(--ink-soft) !important;
+    font-size: 11.5px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
 div[data-testid="stSelectbox"] > div > div {
     background: var(--paper-raised) !important;
     border: 1px solid var(--rule-strong) !important;
     border-radius: 2px !important;
-    font-family: 'Inter', sans-serif !important;
+}
+div[data-testid="stSelectbox"] * {
     color: var(--ink) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+div[data-testid="stSelectbox"] svg {
+    fill: var(--ink-soft) !important;
+}
+ul[data-testid="stSelectboxVirtualDropdown"] {
+    background: var(--paper-raised) !important;
+}
+ul[data-testid="stSelectboxVirtualDropdown"] li,
+ul[data-testid="stSelectboxVirtualDropdown"] li * {
+    color: var(--ink) !important;
+}
+ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+    background: var(--rule) !important;
 }
 
 .stButton button {
@@ -304,6 +326,17 @@ div[data-testid="stSelectbox"] > div > div {
 
 /* ---------- misc ---------- */
 .stAlert { border-radius: 2px !important; }
+
+div[data-testid="stSpinner"] p,
+div[data-testid="stStatusWidget"] p {
+    color: var(--ink) !important;
+}
+div[data-testid="stSpinner"] {
+    color: var(--ink) !important;
+}
+.stMarkdown, .stMarkdown p {
+    color: var(--ink);
+}
 </style>
 """, unsafe_allow_html=True)
 
