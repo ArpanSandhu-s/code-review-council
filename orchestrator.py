@@ -58,7 +58,7 @@ if PROVIDER == "gemini":
     from google import genai
     from google.genai import types
     _gemini_client = genai.Client(api_key=_get_config("GEMINI_API_KEY"))
-    GEMINI_MODEL = "gemini-2.5-flash"
+    GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 
 def _call_gemini(system_prompt: str, user_message: str, max_tokens: int) -> str:
@@ -244,7 +244,7 @@ def run_council(code: str, language: str = "") -> dict:
         # out a little so a normal review doesn't trip the limit.
         if PROVIDER == "gemini" and i > 0:
             import time
-            time.sleep(13)
+            time.sleep(5)
         output = call_claude(agent["system_prompt"], user_message)
         agent_reports[agent["id"]] = output
         thread.append({"speaker": agent["name"], "role": agent["id"], "content": output})
