@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Council</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --border: #e5e4e0;
+    --border-strong: #d4d3ce;
+    --text-primary: #16161a;
+    --text-secondary: #5c5b57;
+    --text-muted: #8b8a85;
+
+    --security: #b3261e;
+    --security-bg: #fbeae9;
+    --security-border: #f0c4c1;
+
+    --performance: #95650a;
+    --performance-bg: #fbf1de;
+    --performance-border: #ecd6a3;
+
+    --readability: #1a56c4;
+    --readability-bg: #eaf0fc;
+    --readability-border: #c2d4f5;
+
+    --manager: #5b21b6;
+    --manager-bg: #f2eafb;
+    --manager-border: #d9c4f0;
+
+    --success: #1c7c4d;
+    --success-bg: #e9f7ef;
+    --success-border: #b9e3cb;
+
+    --danger: #b3261e;
+    --danger-bg: #fbeae9;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.03);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 48px 24px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    gap: 24px;
+  }
+  .header-text h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .header-text p {
+    font-size: 14.5px;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 480px;
+    line-height: 1.5;
+  }
+  .badge-row {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .badge {
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success);
+  }
+
+  /* ---------- Input card ---------- */
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 4px;
+    margin-bottom: 14px;
+  }
+  .input-card-inner {
+    padding: 16px 16px 12px;
+  }
+  .input-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    padding: 0;
+    border: none;
+    resize: vertical;
+    background: transparent;
+    color: var(--text-primary);
+  }
+  textarea:focus { outline: none; }
+  textarea::placeholder { color: var(--text-muted); }
+
+  .input-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  select {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--border-strong); }
+
+  button.primary {
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 9px 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  button.primary:hover:not(:disabled) { background: #2b2b30; }
+  button.primary:active:not(:disabled) { transform: scale(0.98); }
+  button.primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .spinner {
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.visible { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Error ---------- */
+  .error-box {
+    display: none;
+    background: var(--danger-bg);
+    border: 1px solid var(--security-border);
+    color: var(--danger);
+    font-size: 13.5px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 14px;
+  }
+  .error-box.visible { display: block; }
+
+  /* ---------- Agent grid ---------- */
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin: 32px 0 12px;
+  }
+
+  .agents-grid {
+    display: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .agents-grid.visible { display: grid; }
+
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .agent-card-head {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .agent-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .agent-icon {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .agent-card.security .agent-icon { background: var(--security-bg); color: var(--security); }
+  .agent-card.performance .agent-icon { background: var(--performance-bg); color: var(--performance); }
+  .agent-card.readability .agent-icon { background: var(--readability-bg); color: var(--readability); }
+
+  .agent-name {
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .score-pill {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    display: inline-flex;
+    width: fit-content;
+  }
+  .agent-card.security .score-pill { background: var(--security-bg); color: var(--security); border: 1px solid var(--security-border); }
+  .agent-card.performance .score-pill { background: var(--performance-bg); color: var(--performance); border: 1px solid var(--performance-border); }
+  .agent-card.readability .score-pill { background: var(--readability-bg); color: var(--readability); border: 1px solid var(--readability-border); }
+
+  .agent-card-body {
+    padding: 14px 16px 16px;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    overflow-y: auto;
+    max-height: 360px;
+    flex: 1;
+  }
+  .agent-card-body strong { color: var(--text-primary); font-weight: 600; }
+
+  /* ---------- Consensus ---------- */
+  .consensus-card {
+    display: none;
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    margin-top: 14px;
+  }
+  .consensus-card.visible { display: block; }
+
+  .consensus-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+  .consensus-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--success);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .consensus-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0e4d2c;
+  }
+  .consensus-subtitle {
+    font-size: 12.5px;
+    color: #2c6e4a;
+    margin-top: 1px;
+  }
+
+  .consensus-body {
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: #1a3d2a;
+    white-space: pre-wrap;
+  }
+
+  .scores-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .score-chip {
+    background: rgba(255,255,255,0.65);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .score-chip-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0e4d2c;
+  }
+  .score-chip-label {
+    font-size: 11px;
+    color: #2c6e4a;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  @media (max-width: 720px) {
+    .agents-grid { grid-template-columns: 1fr; }
+    .scores-row { grid-template-columns: 1fr; }
+    .header { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <div class="header-text">
+      <h1>Code review council</h1>
+      <p>Three specialist agents independently review your code, debate trade-offs, and converge on a prioritized fix list.</p>
+    </div>
+    <div class="badge-row">
+      <div class="badge"><span class="dot"></span>Local model</div>
+    </div>
+  </div>
+
+  <div class="input-card">
+    <div class="input-card-inner">
+      <div class="input-label">Paste your code</div>
+      <textarea id="code-input" placeholder="// Paste any code here — JavaScript, Python, Go, etc.">def get_user(user_id):
+    query = "SELECT * FROM users WHERE id = " + user_id
+    result = db.execute(query)
+    return result</textarea>
+    </div>
+    <div class="input-footer">
+      <select id="language">
+        <option value="">Auto-detect language</option>
+        <option>Python</option>
+        <option>JavaScript</option>
+        <option>TypeScript</option>
+        <option>Go</option>
+        <option>Java</option>
+        <option>C#</option>
+        <option>Rust</option>
+        <option>SQL</option>
+      </select>
+      <button class="primary" id="run-btn" onclick="runReview()">
+        <span class="spinner" id="spinner"></span>
+        <span id="btn-label">Convene the council</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="error-box" id="error"></div>
+
+  <div class="section-label" id="agents-label" style="display:none">Agent reports</div>
+  <div class="agents-grid" id="agents-grid">
+    <div class="agent-card security">
+      <div class="agent-card-head">
+        <div class="agent-name-row">
+          <div class="agent-icon">S</div>
+          <div class="agent-name">Security agent</div>
+        </div>
+        <div class="score-pill" id="score-security">Score —</div>
+      </div>
+      <div class="agent-card-body" id="report-security"></div>
+    </div>
+
+    <div class="agent-card performance">
+      <div class="agent-card-head">
+        <div class="agent-name-row">
+          <div class="agent-icon">P</div>
+          <div class="agent-name">Performance agent</div>
+        </div>
+        <div class="score-pill" id="score-performance">Score —</div>
+      </div>
+      <div class="agent-card-body" id="report-performance"></div>
+    </div>
+
+    <div class="agent-card readability">
+      <div class="agent-card-head">
+        <div class="agent-name-row">
+          <div class="agent-icon">R</div>
+          <div class="agent-name">Readability agent</div>
+        </div>
+        <div class="score-pill" id="score-readability">Score —</div>
+      </div>
+      <div class="agent-card-body" id="report-readability"></div>
+    </div>
+  </div>
+
+  <div class="consensus-card" id="consensus-box">
+    <div class="consensus-head">
+      <div class="consensus-icon">✓</div>
+      <div>
+        <div class="consensus-title">Council consensus</div>
+        <div class="consensus-subtitle">Synthesized by the chat manager from all three reports</div>
+      </div>
+    </div>
+    <div class="consensus-body" id="consensus-text"></div>
+    <div class="scores-row">
+      <div class="score-chip">
+        <div class="score-chip-num" id="final-score-security">—</div>
+        <div class="score-chip-label">Security</div>
+      </div>
+      <div class="score-chip">
+        <div class="score-chip-num" id="final-score-performance">—</div>
+        <div class="score-chip-label">Performance</div>
+      </div>
+      <div class="score-chip">
+        <div class="score-chip-num" id="final-score-readability">—</div>
+        <div class="score-chip-label">Readability</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatText(str) {
+  return escapeHtml(str).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+async function runReview() {
+  const code = document.getElementById('code-input').value.trim();
+  const language = document.getElementById('language').value;
+  const btn = document.getElementById('run-btn');
+  const btnLabel = document.getElementById('btn-label');
+  const spinner = document.getElementById('spinner');
+  const errorBox = document.getElementById('error');
+
+  if (!code) return;
+
+  btn.disabled = true;
+  spinner.classList.add('visible');
+  btnLabel.textContent = 'Council in session…';
+  errorBox.classList.remove('visible');
+  document.getElementById('agents-grid').classList.remove('visible');
+  document.getElementById('agents-label').style.display = 'none';
+  document.getElementById('consensus-box').classList.remove('visible');
+
+  try {
+    const res = await fetch('/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, language })
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+
+    document.getElementById('report-security').innerHTML = formatText(data.agent_reports.security);
+    document.getElementById('report-performance').innerHTML = formatText(data.agent_reports.performance);
+    document.getElementById('report-readability').innerHTML = formatText(data.agent_reports.readability);
+
+    document.getElementById('score-security').textContent = 'Score ' + data.scores.security;
+    document.getElementById('score-performance').textContent = 'Score ' + data.scores.performance;
+    document.getElementById('score-readability').textContent = 'Score ' + data.scores.readability;
+
+    document.getElementById('final-score-security').textContent = data.scores.security;
+    document.getElementById('final-score-performance').textContent = data.scores.performance;
+    document.getElementById('final-score-readability').textContent = data.scores.readability;
+
+    document.getElementById('consensus-text').innerHTML = formatText(data.consensus);
+
+    document.getElementById('agents-label').style.display = 'block';
+    document.getElementById('agents-grid').classList.add('visible');
+    document.getElementById('consensus-box').classList.add('visible');
+
+    document.getElementById('agents-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    errorBox.textContent = e.message;
+    errorBox.classList.add('visible');
+  }
+
+  btn.disabled = false;
+  spinner.classList.remove('visible');
+  btnLabel.textContent = 'Review another snippet';
+}
+</script>
+
+</body>
+</html>
