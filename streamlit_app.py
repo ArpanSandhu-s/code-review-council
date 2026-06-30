@@ -240,6 +240,8 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
     font-size: 13.5px;
     line-height: 1.75;
     color: var(--ink);
+    max-height: 380px;
+    overflow-y: auto;
 }
 .entry-body code {
     background: var(--rule);
@@ -439,10 +441,14 @@ def stamp_for_score(score_str):
 
 
 def render_body(text):
-    """Light formatting: escape, then turn **bold** into <strong> and
-    `code` into <code>, and newlines into <br>."""
+    """Light formatting: strip the leading SCORE line (already shown as
+    the stamp), then escape, turn **bold** into <strong>, `code` into
+    <code>, and newlines into <br>."""
     import html
     import re
+    # Remove a leading "X_SCORE: N/10" line if present, plus any blank
+    # line that follows it.
+    text = re.sub(r"^\s*\w+_SCORE:\s*\d+/10\s*\n+", "", text)
     escaped = html.escape(text)
     escaped = escaped.replace("\n", "<br>")
     escaped = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)

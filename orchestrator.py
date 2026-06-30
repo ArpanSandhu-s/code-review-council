@@ -109,7 +109,7 @@ def _call_ollama(system_prompt: str, user_message: str, max_tokens: int) -> str:
     return response.json()["message"]["content"]
 
 
-def call_claude(system_prompt: str, user_message: str, max_tokens: int = 800) -> str:
+def call_claude(system_prompt: str, user_message: str, max_tokens: int = 1500) -> str:
     """A single call to an 'agent'. Each agent is just an LLM with a
     different system prompt — that's it. This function is the building
     block everything else is made of.
@@ -142,13 +142,15 @@ Check for: SQL injection, XSS, CSRF, insecure deserialization, hardcoded secrets
 auth/authorization flaws, missing input validation, dangerous eval/exec usage,
 path traversal, race conditions, insecure dependencies, and similar issues.
 
-Format your response as:
-1. One-sentence verdict (e.g. "This code has 2 critical vulnerabilities.")
-2. A bulleted list of specific issues found, each with: what the issue is,
+Format your response EXACTLY as follows, in this order:
+1. First line, exactly: SECURITY_SCORE: X/10
+2. Second line: one-sentence verdict (e.g. "This code has 2 critical vulnerabilities.")
+3. Then a bulleted list of specific issues found, each with: what the issue is,
    why it's dangerous, and a concrete fix. If there are no issues, say so.
-3. A final line exactly in this format: SECURITY_SCORE: X/10
 
-Be concise but specific. Reference exact lines or patterns from the code.""",
+Keep your full response under 250 words. Be concise but specific. Reference exact
+lines or patterns from the code. The score line MUST be the very first line, before
+anything else, no exceptions.""",
     },
     {
         "id": "performance",
@@ -159,14 +161,16 @@ Check for: N+1 queries, O(n^2) or worse algorithms where better exists, missing
 indexes/caching, unnecessary re-computation, blocking I/O on hot paths, memory
 leaks, excessive allocations, inefficient data structures, and similar issues.
 
-Format your response as:
-1. One-sentence verdict.
-2. A bulleted list of specific bottlenecks found, each with: what the issue is,
-   its cost (e.g. time/space complexity, or real-world impact), and a concrete
+Format your response EXACTLY as follows, in this order:
+1. First line, exactly: PERFORMANCE_SCORE: X/10
+2. Second line: one-sentence verdict.
+3. Then a bulleted list of specific bottlenecks found, each with: what the issue
+   is, its cost (e.g. time/space complexity, or real-world impact), and a concrete
    fix. If there are no issues, say so.
-3. A final line exactly in this format: PERFORMANCE_SCORE: X/10
 
-Be concise but specific. Reference exact lines or patterns from the code.""",
+Keep your full response under 250 words. Be concise but specific. Reference exact
+lines or patterns from the code. The score line MUST be the very first line, before
+anything else, no exceptions.""",
     },
     {
         "id": "readability",
@@ -177,13 +181,15 @@ Check for: unclear naming, missing/poor error handling, poor structure, long
 functions doing too much, magic numbers, missing comments on complex logic,
 tight coupling, missing type hints/annotations, inconsistent style.
 
-Format your response as:
-1. One-sentence verdict.
-2. A bulleted list of specific issues found, each with: what the issue is, why
+Format your response EXACTLY as follows, in this order:
+1. First line, exactly: READABILITY_SCORE: X/10
+2. Second line: one-sentence verdict.
+3. Then a bulleted list of specific issues found, each with: what the issue is, why
    it hurts maintainability, and a concrete fix. If there are no issues, say so.
-3. A final line exactly in this format: READABILITY_SCORE: X/10
 
-Be concise but specific. Reference exact lines or patterns from the code.""",
+Keep your full response under 250 words. Be concise but specific. Reference exact
+lines or patterns from the code. The score line MUST be the very first line, before
+anything else, no exceptions.""",
     },
 ]
 
@@ -254,7 +260,7 @@ def run_council(code: str, language: str = "") -> dict:
         f"Here are the three agent reports for this code review:\n\n"
         f"{debate_context}\n\nSynthesize these into a final consensus."
     )
-    consensus = call_claude(MANAGER_SYSTEM_PROMPT, manager_input, max_tokens=500)
+    consensus = call_claude(MANAGER_SYSTEM_PROMPT, manager_input, max_tokens=900)
     thread.append({"speaker": "Chat Manager", "role": "manager", "content": consensus})
 
     # --- Step 3: extract scores for the UI -----------------------------
