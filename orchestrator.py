@@ -77,15 +77,19 @@ logger = logging.getLogger(__name__)
 # Provider / model construction
 # --------------------------------------------------------------------------
 
-PROVIDER = os.environ.get("COUNCIL_PROVIDER", "gemini")  # "gemini" | "ollama"
+PROVIDER = os.environ.get("COUNCIL_PROVIDER") or os.environ.get("LLM_PROVIDER", "gemini")
+# COUNCIL_PROVIDER is the canonical name going forward. LLM_PROVIDER is
+# honored as a fallback ONLY for backward compatibility with the old
+# README/setup instructions that predate the LangChain rewrite - if
+# you're setting this fresh, use COUNCIL_PROVIDER.
 
 # FIX 2: debate phase toggle. Defaults to enabled.
 ENABLE_DEBATE = os.environ.get("COUNCIL_ENABLE_DEBATE", "true").strip().lower() not in (
     "false", "0", "no", "off",
 )
 
-_OLLAMA_MODEL_NAME = "qwen2.5-coder"
-_OLLAMA_BASE_URL = "http://localhost:11434"
+_OLLAMA_MODEL_NAME = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder")
+_OLLAMA_BASE_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 _GEMINI_MODEL_NAME = "gemini-2.5-flash-lite"
 
 
