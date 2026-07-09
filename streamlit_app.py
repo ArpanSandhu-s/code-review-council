@@ -97,6 +97,29 @@ html, body, [class*="css"] {
     background: var(--paper);
 }
 
+/* Self-contained alert box - deliberately does NOT use st.warning()/
+   st.error(), which pull colors from Streamlit's own theme resolution
+   (light/dark) rather than our custom docket palette. If Streamlit
+   resolves to a dark theme (OS dark mode, Streamlit Cloud defaults,
+   etc.) while .stApp forces our light "paper" background, native
+   alert components can render with a text color meant for a DARK
+   background - low/zero contrast against our light one. This class
+   hardcodes both background AND text color so it's immune to that
+   entirely, regardless of what theme Streamlit itself is in. */
+.docket-alert {
+    background: var(--performance-tint);
+    color: var(--ink) !important;
+    border: 1px solid var(--rule-strong);
+    border-left: 4px solid var(--performance);
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    margin: 0.75rem 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+.docket-alert strong { color: var(--ink) !important; }
+
 #MainMenu, footer, header { visibility: hidden; }
 
 .block-container {
@@ -466,16 +489,20 @@ if uploaded_file is not None:
     if st.session_state.get("_last_uploaded_name") != uploaded_file.name:
         raw_bytes = uploaded_file.getvalue()
         if len(raw_bytes) > MAX_UPLOAD_BYTES:
-            st.warning(
-                f"'{uploaded_file.name}' is {len(raw_bytes) // 1000}KB — truncated to the "
-                f"first {MAX_UPLOAD_BYTES // 1000}KB to keep the review within token limits."
+            st.markdown(
+                f'<div class="docket-alert">\'{uploaded_file.name}\' is {len(raw_bytes) // 1000}KB — '
+                f'truncated to the first {MAX_UPLOAD_BYTES // 1000}KB to keep the review within token limits.</div>',
+                unsafe_allow_html=True,
             )
             raw_bytes = raw_bytes[:MAX_UPLOAD_BYTES]
         try:
             decoded = raw_bytes.decode("utf-8")
         except UnicodeDecodeError:
             decoded = raw_bytes.decode("utf-8", errors="replace")
-            st.warning(f"'{uploaded_file.name}' isn't valid UTF-8 — some characters were replaced.")
+            st.markdown(
+                f'<div class="docket-alert">\'{uploaded_file.name}\' isn\'t valid UTF-8 — some characters were replaced.</div>',
+                unsafe_allow_html=True,
+            )
 
         st.session_state["exhibit_code"] = decoded
         st.session_state["_last_uploaded_name"] = uploaded_file.name
@@ -674,7 +701,11 @@ if "result" in st.session_state:
 
     if result.get("failed_agents"):
         failed_titles = ", ".join(AGENT_META[k]["title"] for k in result["failed_agents"])
-        st.warning(f"⚠️ The following seat(s) were empty due to technical failure and did not contribute findings: {failed_titles}")
+        st.markdown(
+            f'<div class="docket-alert">⚠️ The following seat(s) were empty due to '
+            f'technical failure and did not contribute findings: <strong>{failed_titles}</strong></div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown(f"""
     <div class="verdict-box">

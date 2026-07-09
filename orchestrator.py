@@ -77,15 +77,19 @@ logger = logging.getLogger(__name__)
 # Provider / model construction
 # --------------------------------------------------------------------------
 
-PROVIDER = os.environ.get("COUNCIL_PROVIDER", "gemini")  # "gemini" | "ollama"
+PROVIDER = os.environ.get("COUNCIL_PROVIDER") or os.environ.get("LLM_PROVIDER", "gemini")
+# COUNCIL_PROVIDER is the canonical name going forward. LLM_PROVIDER is
+# honored as a fallback ONLY for backward compatibility with the old
+# README/setup instructions that predate the LangChain rewrite - if
+# you're setting this fresh, use COUNCIL_PROVIDER.
 
 # FIX 2: debate phase toggle. Defaults to enabled.
 ENABLE_DEBATE = os.environ.get("COUNCIL_ENABLE_DEBATE", "true").strip().lower() not in (
     "false", "0", "no", "off",
 )
 
-_OLLAMA_MODEL_NAME = "qwen2.5-coder"
-_OLLAMA_BASE_URL = "http://localhost:11434"
+_OLLAMA_MODEL_NAME = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder")
+_OLLAMA_BASE_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 _GEMINI_MODEL_NAME = "gemini-2.5-flash-lite"
 
 
@@ -260,6 +264,25 @@ class AgentResult:
     failed: bool = False
 
 
+def _friendly_error_message(e: Exception) -> str:
+    """Classifies an exception into a short, human-readable message for
+    the UI. The full raw exception (stack, JSON error body, everything)
+    is still logged server-side via logger.warning - this function only
+    controls what a USER sees, since dumping a raw ChatGoogleGenerativeAIError
+    (which can be a multi-hundred-character nested JSON blob) into a docket
+    card looks broken even when the system is behaving correctly."""
+    msg = str(e)
+    if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+        return "Daily quota reached for this provider. Try again later, or switch to a different provider."
+    if "503" in msg or "UNAVAILABLE" in msg:
+        return "The model is temporarily overloaded. This usually resolves within a minute - try again shortly."
+    if "401" in msg or "PERMISSION_DENIED" in msg or "API_KEY_INVALID" in msg:
+        return "Authentication failed - check that your API key is set correctly."
+    if "timeout" in msg.lower() or "timed out" in msg.lower():
+        return "The request timed out. This can happen under high load - try again."
+    return "This seat could not be filled due to a technical failure."
+
+
 def _invoke_agent_safely(chain, inputs: dict, meta: dict, role_label: str,
                           on_agent_complete: Optional[Callable[[AgentResult], None]]) -> tuple[str, bool]:
     """Runs one agent's chain. ANY exception - Gemini failing, its Ollama
@@ -275,7 +298,7 @@ def _invoke_agent_safely(chain, inputs: dict, meta: dict, role_label: str,
         output = chain.invoke(inputs)
     except Exception as e:
         failed = True
-        output = f"[Technical failure - this seat is empty: {type(e).__name__}: {e}]"
+        output = f"[Seat empty - {_friendly_error_message(e)}]"
         logger.warning("Agent '%s' failed: %s: %s", role_label, type(e).__name__, e)
     duration = time.time() - start
     if on_agent_complete:
@@ -530,8 +553,9 @@ def run_council(
     except Exception as e:
         logger.warning("Chat Manager failed: %s: %s", type(e).__name__, e)
         consensus = (
-            f"[COUNCIL RULING UNAVAILABLE - Chat Manager failed: "
-            f"{type(e).__name__}: {e}]\n\nRaw findings below:\n\n{combined_thread_text}"
+            f"The council convened and specialist findings were filed below, but the "
+            f"Chat Manager could not issue a final ruling: {_friendly_error_message(e)}\n\n"
+            f"Raw findings below:\n\n{combined_thread_text}"
         )
 
     return {
