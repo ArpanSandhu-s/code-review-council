@@ -11,6 +11,7 @@ with a stamped score, and the chat manager hands down a final ruling.
 """
 
 import streamlit as st
+from langchain_core.messages import HumanMessage, AIMessage
 from orchestrator import run_council
 
 st.set_page_config(
@@ -18,6 +19,48 @@ st.set_page_config(
     page_icon="⚖️",
     layout="wide",
 )
+
+# ---------------------------------------------------------------------------
+# Sidebar — Case History (Claude-"Recents"-style list of past sessions)
+# ---------------------------------------------------------------------------
+if "session_log" not in st.session_state:
+    st.session_state["session_log"] = []
+if "next_docket_number" not in st.session_state:
+    st.session_state["next_docket_number"] = 1
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+
+with st.sidebar:
+    st.markdown("### ⚖️ Code Review Council")
+    if st.button("＋ New case", use_container_width=True):
+        st.session_state["exhibit_code"] = ""
+        st.session_state.pop("result", None)
+        st.rerun()
+
+    st.markdown("---")
+    st.caption(f"CASE HISTORY · {len(st.session_state['session_log'])} filed")
+
+    if not st.session_state["session_log"]:
+        st.caption("No cases yet — convene the council to file your first docket.")
+    else:
+        for entry in st.session_state["session_log"]:
+            label = f"CRC-{entry['docket_no']:03d} · {entry['language']}\n{entry['preview']}"
+            if st.button(label, key=f"case_{entry['docket_no']}", use_container_width=True):
+                st.session_state["exhibit_code"] = entry["code"]
+                st.session_state["exhibit_language"] = entry["language"] if entry["language"] != "Auto-detect" else "Auto-detect"
+                st.session_state["result"] = entry["result"]
+                st.rerun()
+
+    if st.session_state["session_log"]:
+        st.markdown("---")
+        if st.button("🗑️ Clear all case history", use_container_width=True):
+            st.session_state["session_log"] = []
+            st.session_state["chat_history"] = []
+            st.session_state["next_docket_number"] = 1
+            st.session_state.pop("result", None)
+            st.rerun()
+
+
 
 # ---------------------------------------------------------------------------
 # Global styling
@@ -326,6 +369,29 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
     margin-top: 2px;
 }
 
+/* ---------- File uploader (docket style) ---------- */
+div[data-testid="stFileUploader"] section {
+    background: var(--paper-raised) !important;
+    border: 1px dashed var(--rule-strong) !important;
+    border-radius: 2px !important;
+}
+div[data-testid="stFileUploader"] section > div {
+    color: var(--ink-soft) !important;
+}
+div[data-testid="stFileUploader"] button {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11.5px !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--rule-strong) !important;
+    border-radius: 2px !important;
+}
+div[data-testid="stFileUploader"] small {
+    color: var(--ink-soft) !important;
+}
+
 /* ---------- misc ---------- */
 .stAlert { border-radius: 2px !important; }
 
@@ -369,19 +435,77 @@ default_code = '''def get_user(user_id):
     result = db.execute(query)
     return result'''
 
+# Map file extensions to the language selectbox values so an uploaded file
+# can auto-select the right language instead of leaving it on Auto-detect.
+EXTENSION_LANGUAGE_MAP = {
+    ".py": "Python",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript",
+    ".go": "Go",
+    ".java": "Java",
+    ".cs": "C#",
+    ".rs": "Rust",
+    ".sql": "SQL",
+}
+
+MAX_UPLOAD_BYTES = 300_000  # ~300KB guard so we don't blow past token limits silently
+
+uploaded_file = st.file_uploader(
+    "Upload a code file",
+    type=["py", "js", "jsx", "ts", "tsx", "go", "java", "cs", "rs", "sql", "txt"],
+    label_visibility="collapsed",
+    help="Upload a full source file instead of pasting — it will populate the exhibit below, still editable before you convene the council.",
+)
+
+# When a new file lands, decode it into session_state so the text_area
+# below picks it up. We track the filename so re-uploading the SAME file
+# doesn't fight with manual edits the user made in between.
+if uploaded_file is not None:
+    if st.session_state.get("_last_uploaded_name") != uploaded_file.name:
+        raw_bytes = uploaded_file.getvalue()
+        if len(raw_bytes) > MAX_UPLOAD_BYTES:
+            st.warning(
+                f"'{uploaded_file.name}' is {len(raw_bytes) // 1000}KB — truncated to the "
+                f"first {MAX_UPLOAD_BYTES // 1000}KB to keep the review within token limits."
+            )
+            raw_bytes = raw_bytes[:MAX_UPLOAD_BYTES]
+        try:
+            decoded = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            decoded = raw_bytes.decode("utf-8", errors="replace")
+            st.warning(f"'{uploaded_file.name}' isn't valid UTF-8 — some characters were replaced.")
+
+        st.session_state["exhibit_code"] = decoded
+        st.session_state["_last_uploaded_name"] = uploaded_file.name
+
+        ext = "." + uploaded_file.name.rsplit(".", 1)[-1].lower() if "." in uploaded_file.name else ""
+        detected_lang = EXTENSION_LANGUAGE_MAP.get(ext)
+        if detected_lang:
+            st.session_state["exhibit_language"] = detected_lang
+
+        st.success(f"'{uploaded_file.name}' loaded into Exhibit A — review below before convening the council.")
+
+if "exhibit_code" not in st.session_state:
+    st.session_state["exhibit_code"] = default_code
+if "exhibit_language" not in st.session_state:
+    st.session_state["exhibit_language"] = "Auto-detect"
+
 col1, col2 = st.columns([4, 1.1])
 with col1:
     code = st.text_area(
         "code",
-        value=default_code,
         height=230,
         label_visibility="collapsed",
         placeholder="Paste any code here — Python, JavaScript, Go, etc.",
+        key="exhibit_code",
     )
 with col2:
     language = st.selectbox(
         "Language",
         ["Auto-detect", "Python", "JavaScript", "TypeScript", "Go", "Java", "C#", "Rust", "SQL"],
+        key="exhibit_language",
     )
     st.write("")
     run_btn = st.button("Convene council", use_container_width=True)
@@ -397,7 +521,37 @@ if run_btn:
         lang_arg = "" if language == "Auto-detect" else language
         with st.spinner("The council is deliberating…"):
             try:
-                st.session_state["result"] = run_council(code, lang_arg)
+                result = run_council(
+                    code,
+                    lang_arg,
+                    chat_history=st.session_state["chat_history"],
+                )
+                st.session_state["result"] = result
+
+                # Only extend history for a real ruling - not for a
+                # guardrail rejection (Upgrade 2), which has no consensus
+                # worth remembering as a turn.
+                if result.get("status") == "ok":
+                    submission_summary = (
+                        f"Submitted a {lang_arg or 'code'} exhibit "
+                        f"({len(code)} characters) for review."
+                    )
+                    st.session_state["chat_history"].append(HumanMessage(content=submission_summary))
+                    st.session_state["chat_history"].append(AIMessage(content=result["consensus"]))
+                    st.session_state["chat_history"] = st.session_state["chat_history"][-10:]
+
+                    # Full record for the sidebar - independent of the
+                    # trimmed LLM-facing chat_history above.
+                    docket_no = st.session_state["next_docket_number"]
+                    st.session_state["next_docket_number"] += 1
+                    first_line = code.strip().splitlines()[0].strip() if code.strip() else "(empty)"
+                    st.session_state["session_log"].insert(0, {
+                        "docket_no": docket_no,
+                        "language": lang_arg or "Auto-detect",
+                        "code": code,
+                        "preview": first_line[:40] + ("…" if len(first_line) > 40 else ""),
+                        "result": result,
+                    })
             except Exception as e:
                 err_str = str(e)
                 if "503" in err_str or "UNAVAILABLE" in err_str:
@@ -489,6 +643,39 @@ if "result" in st.session_state:
             """, unsafe_allow_html=True)
 
     consensus_html = render_body(result["consensus"])
+
+    # --- Score-delta trail: surfaces the actual "debate" - which agents
+    # changed their mind between Pass 1 draft and Pass 2 finalized score,
+    # instead of leaving that buried inside the Chat Manager's prose.
+    if result.get("debate_enabled") and result.get("score_deltas"):
+        delta_rows = []
+        for agent_id in ["security", "performance", "readability"]:
+            delta = result["score_deltas"].get(agent_id)
+            draft = result.get("draft_scores", {}).get(agent_id, "—")
+            final = result["scores"][agent_id]
+            title = AGENT_META[agent_id]["title"]
+            if delta is None:
+                continue
+            if delta == 0:
+                delta_rows.append(f"<div class='tally-item'><div class='tally-label'>{title}</div><div>{draft} → {final} (unchanged)</div></div>")
+            else:
+                direction = "raised" if delta > 0 else "lowered"
+                delta_rows.append(f"<div class='tally-item'><div class='tally-label'>{title}</div><div>{draft} → {final} ({direction} score by {abs(delta)} after cross-review)</div></div>")
+
+        if delta_rows:
+            st.markdown(f"""
+            <div class="verdict-box" style="margin-bottom: 1rem;">
+                <div class="verdict-eyebrow">Pass 1 → Pass 2 — the debate trail</div>
+                <div class="tally-row">
+                    {''.join(delta_rows)}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if result.get("failed_agents"):
+        failed_titles = ", ".join(AGENT_META[k]["title"] for k in result["failed_agents"])
+        st.warning(f"⚠️ The following seat(s) were empty due to technical failure and did not contribute findings: {failed_titles}")
+
     st.markdown(f"""
     <div class="verdict-box">
         <div class="verdict-seal">FINAL<br>RULING</div>
