@@ -1,3 +1,5 @@
 streamlit
-google-genai
-requests
+langchain-core
+langchain-google-genai
+langchain-ollama
+python-dotenv
